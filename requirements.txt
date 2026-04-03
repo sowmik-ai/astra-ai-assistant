@@ -1,0 +1,34 @@
+# Astra Local AI — Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Wake word detection (no API key needed)
+SpeechRecognition>=3.10.0
+
+# Speech to text (local, offline)
+faster-whisper>=1.0.0
+
+# Audio capture
+pyaudio>=0.2.14
+sounddevice>=0.4.6
+
+# Text to speech (offline, free - uses Windows voices)
+pyttsx3>=2.90
+
+# Speaker verification
+resemblyzer>=0.1.1.dev0
+
+# Local LLM
+requests>=2.31.0
+
+# RAG memory
+chromadb>=0.4.0
+sentence-transformers>=2.7.0
+
+# Face UI
+Pillow>=10.0.0
+
+# Web search tool
+duckduckgo-search>=5.3.0
+
+# Utilities
+numpy>=1.24.0
