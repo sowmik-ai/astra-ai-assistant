@@ -163,3 +163,124 @@ _REGISTRY = {
 
 TOOLS            = {name: fn   for name, (fn, _)   in _REGISTRY.items()}
 TOOL_DESCRIPTIONS = {name: desc for name, (_, desc) in _REGISTRY.items()}
+
+
+# ─────────────────────────────────────────────
+# AWS EC2 TOOLS — auto-registered if boto3 available
+# ─────────────────────────────────────────────
+try:
+    from aws_tools import AWS_TOOLS
+    for name, (fn, desc) in AWS_TOOLS.items():
+        _REGISTRY[name] = (fn, desc)
+    TOOLS             = {name: fn   for name, (fn, _)   in _REGISTRY.items()}
+    TOOL_DESCRIPTIONS = {name: desc for name, (_, desc) in _REGISTRY.items()}
+    print(f"[Tools] AWS EC2 tools loaded: {list(AWS_TOOLS.keys())}")
+except ImportError:
+    print("[Tools] boto3 not installed — AWS tools disabled. Run: pip install boto3")
+except Exception as e:
+    print(f"[Tools] AWS tools failed to load: {e}")
+
+
+def improvement_stats(_: str = "") -> str:
+    """Show Astra's self-improvement progress."""
+    from self_improve import get_improvement_stats
+    return get_improvement_stats()
+
+
+def self_reflect(_: str = "") -> str:
+    """Astra analyzes her own performance and improves."""
+    from self_improve import analyze_performance
+    return analyze_performance()
+
+
+def teach_new_tool(description: str) -> str:
+    """Teach Astra a new skill by describing it."""
+    from self_improve import create_new_tool
+    return create_new_tool(description)
+
+
+# Add new tools to registry
+TOOLS["improvement_stats"] = improvement_stats
+TOOLS["self_reflect"]      = self_reflect
+TOOLS["teach_new_tool"]    = teach_new_tool
+TOOL_DESCRIPTIONS["improvement_stats"] = "Show Astra self-improvement progress and stats"
+TOOL_DESCRIPTIONS["self_reflect"]      = "Astra reflects on performance and improves herself"
+TOOL_DESCRIPTIONS["teach_new_tool"]    = "Teach Astra a new skill — INPUT: description of the tool"
+
+
+def learning_stats(_: str = "") -> str:
+    """Show Astra's autonomous learning statistics."""
+    from self_learn import get_learning_stats
+    return get_learning_stats()
+
+
+def skill_library(_: str = "") -> str:
+    """Show all skills Astra has autonomously created."""
+    from self_learn import get_skill_library
+    return get_skill_library()
+
+
+def task_patterns(_: str = "") -> str:
+    """Analyse patterns in Astra's task performance."""
+    from self_learn import analyze_task_patterns
+    return analyze_task_patterns()
+
+
+TOOLS["learning_stats"] = learning_stats
+TOOLS["skill_library"]  = skill_library
+TOOLS["task_patterns"]  = task_patterns
+TOOL_DESCRIPTIONS["learning_stats"] = "Show autonomous self-learning stats and progress"
+TOOL_DESCRIPTIONS["skill_library"]  = "Show all skills Astra created autonomously"
+TOOL_DESCRIPTIONS["task_patterns"]  = "Analyse what types of tasks Astra performs best"
+
+
+def health_check(_: str = "") -> str:
+    """Run Astra full system health check."""
+    from self_repair import run_health_check
+    report = run_health_check()
+    healthy  = len(report["healthy"])
+    errors   = len(report["errors"])
+    warnings = len(report["warnings"])
+    return (f"Health check complete. {healthy} modules healthy, "
+            f"{errors} errors, {warnings} warnings.")
+
+def repair_history(_: str = "") -> str:
+    """Show Astra self-repair history."""
+    from self_repair import get_repair_history
+    return get_repair_history()
+
+def list_backups(_: str = "") -> str:
+    """List available file backups."""
+    from self_repair import list_backups as _lb
+    return _lb()
+
+def rollback(filename: str) -> str:
+    """Rollback a file to its previous backup version."""
+    from self_repair import rollback_file
+    success = rollback_file(filename.strip())
+    return f"Rollback {'successful' if success else 'failed'} for {filename}."
+
+TOOLS["health_check"]   = health_check
+TOOLS["repair_history"] = repair_history
+TOOLS["list_backups"]   = list_backups
+TOOLS["rollback"]       = rollback
+TOOL_DESCRIPTIONS["health_check"]   = "Run a full health check on all Astra modules"
+TOOL_DESCRIPTIONS["repair_history"] = "Show history of all self-repairs Astra has performed"
+TOOL_DESCRIPTIONS["list_backups"]   = "List all available file backups"
+TOOL_DESCRIPTIONS["rollback"]       = "Rollback a file to previous version — INPUT: filename"
+
+
+def owner_info(_: str = "") -> str:
+    """Show current Astra owner information."""
+    from ownership import get_owner_info
+    return get_owner_info()
+
+def transfer_history(_: str = "") -> str:
+    """Show ownership transfer history."""
+    from ownership import get_transfer_history
+    return get_transfer_history()
+
+TOOLS["owner_info"]        = owner_info
+TOOLS["transfer_history"]  = transfer_history
+TOOL_DESCRIPTIONS["owner_info"]       = "Show who currently owns Astra"
+TOOL_DESCRIPTIONS["transfer_history"] = "Show history of ownership transfers"
