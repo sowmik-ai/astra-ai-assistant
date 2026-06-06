@@ -148,6 +148,78 @@ def transcribe(audio_bytes: bytes) -> str:
 # ─────────────────────────────────────────────
 ui        = AstraUI()
 
+def handle_typed_input(text: str):
+    """Called when user types a message and presses Enter or Send."""
+    if not text.strip():
+        return
+    try:
+        from intent import route, execute
+        command_id, extras = route(text)
+
+        if command_id == "suggestion":
+            response = extras.get("message", "")
+        elif command_id == "stop_astra":
+            response = "Stopping now. Goodbye Sowmik!"
+        elif command_id and command_id != "general":
+            response = execute(command_id, text, extras)
+        else:
+            ui.set_face("idle")
+            response = agent_loop(text)
+
+        if response:
+            ui.set_face("speaking")
+            ui.add_chat_bubble("astra", response)
+            speak(response)
+            ui.set_face("idle")
+    except Exception as e:
+        ui.add_chat_bubble("astra", f"Error: {e}")
+        ui.set_face("idle")
+
+ui.set_text_callback(handle_typed_input)
+
+# ── File / Image attachment handler ──
+def handle_file_input(file_path: str, question: str = ""):
+    """
+    Called when user attaches a file via the 📎 button.
+    Analyses the file using llama3 and responds in chat.
+    Supports: images, PDF, DOCX, XLSX, CSV, JSON,
+              code files, text files, ZIP archives.
+    """
+    import os
+    from file_analyzer import analyze_file, get_file_icon
+
+    filename = os.path.basename(file_path)
+    icon     = get_file_icon(file_path)
+
+    ui.set_face("idle")
+    ui.add_chat_bubble(
+        "astra",
+        f"Analysing {icon} {filename}... please wait."
+    )
+
+    try:
+        speak(f"Analysing {filename}. Please wait.")
+        response = analyze_file(file_path, question)
+
+        ui.set_face("speaking")
+        ui.add_chat_bubble("astra", response)
+        speak(response[:300])   # speak first 300 chars
+        ui.set_face("idle")
+
+        # Save to memory
+        from rag import add_to_memory
+        add_to_memory(
+            f"Analysed file '{filename}': {response[:300]}",
+            metadata={"type": "file_analysis", "file": filename}
+        )
+
+    except Exception as e:
+        error_msg = f"Could not analyse {filename}: {e}"
+        ui.add_chat_bubble("astra", error_msg)
+        ui.set_face("idle")
+
+ui.set_file_callback(handle_file_input)
+
 # Dashboard — optional, skip if fails
 try:
     from dashboard import AstraDashboard
@@ -246,7 +318,7 @@ def astra_loop():
                 continue
 
             print(f"[Astra] Heard: '{text}'")
-            ui.set_text(f"You: {text}")
+            ui.add_chat_bubble("user", text)
 
             # ══════════════════════════════════════
             # STEP D — Hard stop command
@@ -420,10 +492,9 @@ def astra_loop():
             _last_response = response
 
             ui.set_face("speaking")
-            ui.set_text(f"Astra: {response}")
+            ui.add_chat_bubble("astra", response)
             speak(response)
             ui.set_face("idle")
-            ui.set_text("")
 
             if _has_dashboard and dashboard:
                 dashboard.update_last_interaction(text, response)
@@ -453,15 +524,14 @@ def _run_transfer(new_owner: str):
 if __name__ == "__main__":
     owner = get_current_owner()
 
-    # ── Startup health check ──
-    speak("Astra initialising. Running startup checks.")
-    from self_repair import run_health_check
-    report = run_health_check()
-    if report["errors"]:
-        speak(f"Warning. Found {len(report['errors'])} errors. "
-              f"Attempting automatic repairs.")
-    else:
-        speak(f"All {len(report['healthy'])} modules healthy.")
+    # ── Spoken startup: greeting + live date/time + weather + health check ──
+    from startup_voice import run_startup_voice
+    astra_healthy = run_startup_voice(speak, owner=owner)
+
+    # If critical failure, warn but attempt to continue anyway
+    if not astra_healthy:
+        speak("Attempting to continue in safe mode. "
+              "Some features may not work correctly.")
 
     # ── First-time MFA setup ──
     from auth import _load_config
@@ -473,18 +543,16 @@ if __name__ == "__main__":
         result = run_setup_wizard()
         speak(result)
     else:
-        # Show which factors are active on startup
         active = auth_cfg.get("factors", [])
-        speak(f"Voice MFA active with "
+        speak(f"Voice M F A active with "
               f"{len(active)} factor authentication.")
 
     # ── Start background scheduler ──
     start_scheduler()
 
-    # ── Ready ──
-    speak(f"Astra is online. "
-          f"I am ready for you {owner}. "
-          f"Say Astra to wake me.")
+    # ── Final ready prompt ──
+    if astra_healthy:
+        speak("Say Astra to wake me.")
 
     # ── Start main loop in background thread ──
     threading.Thread(target=astra_loop, daemon=True).start()
