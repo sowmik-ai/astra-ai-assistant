@@ -35,9 +35,35 @@ ALERT_CRIT   = "#ff4444"   # critical alert bubble border
 ALERT_BG     = "#1a0e00"   # alert bubble background
 
 ASSETS_DIR   = "assets"
-FACE_SIZE    = (220, 220)
-WINDOW_W     = 480
-WINDOW_H     = 760
+
+# ── Layout constants — 1920×1080 FHD right side panel ────────────────
+SCREEN_W     = 1920
+SCREEN_H     = 1080
+TASKBAR_H    = 40           # Windows taskbar height (approx)
+
+# Panel mode (default — docked to right edge)
+PANEL_W      = 520
+PANEL_H      = SCREEN_H - TASKBAR_H   # 1040 px
+PANEL_X      = SCREEN_W - PANEL_W     # 1400 — snapped to right
+PANEL_Y      = 0
+
+# Maximised mode (full screen)
+MAX_W        = SCREEN_W
+MAX_H        = SCREEN_H - TASKBAR_H
+MAX_X        = 0
+MAX_Y        = 0
+
+# Minimised mode (compact header-only strip)
+MIN_W        = PANEL_W
+MIN_H        = 48             # just the header bar
+MIN_X        = PANEL_X
+MIN_Y        = 0
+
+# Starting values
+WINDOW_W     = PANEL_W
+WINDOW_H     = PANEL_H
+
+FACE_SIZE    = (260, 260)
 FONT         = "Courier"
 
 STATE_FACE   = {"idle":"🤖", "listening":"👂", "speaking":"🗣️"}
@@ -52,8 +78,13 @@ class AstraUI:
         self.root.title("A.S.T.R.A")
         self.root.configure(bg=BG1)
         self.root.resizable(True, True)
-        self.root.geometry(f"{WINDOW_W}x{WINDOW_H}")
-        self.root.minsize(400, 600)
+        # Start in panel mode — right edge of screen
+        self.root.geometry(f"{PANEL_W}x{PANEL_H}+{PANEL_X}+{PANEL_Y}")
+        self.root.minsize(380, 48)
+        # Always on top so ASTRA is visible while working
+        self.root.attributes("-topmost", True)
+        # Window mode: "panel" | "maximised" | "minimised"
+        self._win_mode = "panel"
 
         self._current_state   = "idle"
         self._gif_frames      = {}
@@ -90,12 +121,12 @@ class AstraUI:
     # ─────────────────────────────────────────
 
     def _build_ui(self):
-        title_font  = tkfont.Font(family=FONT, size=11, weight="bold")
-        small_font  = tkfont.Font(family=FONT, size=8)
-        chat_font   = tkfont.Font(family=FONT, size=10)
-        input_font  = tkfont.Font(family=FONT, size=11)
+        title_font  = tkfont.Font(family=FONT, size=13, weight="bold")
+        small_font  = tkfont.Font(family=FONT, size=9)
+        chat_font   = tkfont.Font(family=FONT, size=11)
+        input_font  = tkfont.Font(family=FONT, size=12)
         btn_font    = tkfont.Font(family=FONT, size=10)
-        hint_font   = tkfont.Font(family=FONT, size=8)
+        hint_font   = tkfont.Font(family=FONT, size=9)
 
         # ── Header ──
         header = tk.Frame(self.root, bg=BG2,
@@ -109,9 +140,49 @@ class AstraUI:
 
         self.conn_label = tk.Label(
             header, text="● ONLINE",
-            font=small_font, fg=GREEN, bg=BG2, padx=12
+            font=small_font, fg=GREEN, bg=BG2, padx=8
         )
         self.conn_label.pack(side="right")
+
+        # ── Window controls ──────────────────────────────────────────
+        ctrl_frame = tk.Frame(header, bg=BG2)
+        ctrl_frame.pack(side="right", padx=4)
+
+        # Minimise button — collapses to header strip
+        self.min_btn = tk.Button(
+            ctrl_frame, text="─",
+            font=tkfont.Font(family=FONT, size=10, weight="bold"),
+            fg=MUTED, bg=BG2,
+            activeforeground=TEAL, activebackground=BG3,
+            relief="flat", bd=0, cursor="hand2",
+            padx=6, pady=2,
+            command=self._minimise
+        )
+        self.min_btn.pack(side="left")
+
+        # Maximise / restore button
+        self.max_btn = tk.Button(
+            ctrl_frame, text="□",
+            font=tkfont.Font(family=FONT, size=10, weight="bold"),
+            fg=MUTED, bg=BG2,
+            activeforeground=TEAL, activebackground=BG3,
+            relief="flat", bd=0, cursor="hand2",
+            padx=6, pady=2,
+            command=self._maximise_restore
+        )
+        self.max_btn.pack(side="left")
+
+        # Panel restore button (back to side panel)
+        self.panel_btn = tk.Button(
+            ctrl_frame, text="▐",
+            font=tkfont.Font(family=FONT, size=10, weight="bold"),
+            fg=MUTED, bg=BG2,
+            activeforeground=TEAL, activebackground=BG3,
+            relief="flat", bd=0, cursor="hand2",
+            padx=6, pady=2,
+            command=self._restore_panel
+        )
+        self.panel_btn.pack(side="left")
 
         # ── Face section ──
         face_frame = tk.Frame(self.root, bg=BG1)
@@ -420,6 +491,37 @@ class AstraUI:
                 daemon=True
             ).start()
 
+    # ─────────────────────────────────────────
+    # WINDOW SIZE CONTROLS
+    # ─────────────────────────────────────────
+
+    def _minimise(self):
+        """Collapse ASTRA to a slim header-only strip at top-right."""
+        self._win_mode = "minimised"
+        self.root.geometry(f"{MIN_W}x{MIN_H}+{MIN_X}+{MIN_Y}")
+        self.min_btn.configure(text="▲", command=self._restore_panel)
+        self.max_btn.configure(text="□", command=self._maximise_restore)
+        self.conn_label.configure(text="● MINIMISED", fg=MUTED)
+
+    def _maximise_restore(self):
+        """Toggle between maximised (full screen) and panel mode."""
+        if self._win_mode == "maximised":
+            self._restore_panel()
+        else:
+            self._win_mode = "maximised"
+            self.root.geometry(f"{MAX_W}x{MAX_H}+{MAX_X}+{MAX_Y}")
+            self.max_btn.configure(text="❐")   # restore icon
+            self.min_btn.configure(text="─", command=self._minimise)
+            self.conn_label.configure(text="● ONLINE", fg=GREEN)
+
+    def _restore_panel(self):
+        """Restore ASTRA to the default right side panel."""
+        self._win_mode = "panel"
+        self.root.geometry(f"{PANEL_W}x{PANEL_H}+{PANEL_X}+{PANEL_Y}")
+        self.max_btn.configure(text="□", command=self._maximise_restore)
+        self.min_btn.configure(text="─", command=self._minimise)
+        self.conn_label.configure(text="● ONLINE", fg=GREEN)
+
     def _toggle_mic(self):
         current = self.mic_btn.cget("fg")
         if current == GREEN:
@@ -488,7 +590,7 @@ class AstraUI:
             font=chat_font,
             fg=text_color,
             bg=bubble_bg,
-            wraplength=320,
+            wraplength=440,
             justify="left",
             anchor="w",
             padx=12, pady=8,
