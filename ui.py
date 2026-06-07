@@ -30,6 +30,9 @@ BORDER       = "#1a2a3a"   # border colour
 USER_BG      = "#0d1a12"   # user bubble bg
 ASTRA_BG     = "#0a1318"   # astra bubble bg
 ATTACH_COLOR = "#ffaa00"   # attachment button
+ALERT_WARN   = "#ffaa00"   # warning alert bubble border
+ALERT_CRIT   = "#ff4444"   # critical alert bubble border
+ALERT_BG     = "#1a0e00"   # alert bubble background
 
 ASSETS_DIR   = "assets"
 FACE_SIZE    = (220, 220)
@@ -435,11 +438,27 @@ class AstraUI:
         self.root.after(0, self._add_bubble_internal, role, text)
 
     def _add_bubble_internal(self, role: str, text: str):
-        """Add bubble on main thread."""
+        """Add bubble on main thread. Supports alert bubbles via role='alert' or 'critical'."""
         chat_font  = tkfont.Font(family=FONT, size=10)
         small_font = tkfont.Font(family=FONT, size=8)
 
-        is_user = (role == "user")
+        is_user    = (role == "user")
+        is_alert   = text.startswith("⚠ ALERT") or text.startswith("🔴 CRITICAL")
+        is_critical = text.startswith("🔴 CRITICAL")
+
+        # ── Alert bubble styling ──
+        if is_alert:
+            border_color = ALERT_CRIT if is_critical else ALERT_WARN
+            bubble_bg    = ALERT_BG
+            text_color   = ALERT_CRIT if is_critical else ALERT_WARN
+            role_text    = "⚠ ASTRA ALERT" if not is_critical else "🔴 CRITICAL ALERT"
+            role_color   = ALERT_CRIT if is_critical else ALERT_WARN
+        else:
+            border_color = None
+            bubble_bg    = USER_BG if is_user else ASTRA_BG
+            text_color   = GREEN if is_user else TEAL
+            role_text    = "You" if is_user else "Astra"
+            role_color   = GREEN if is_user else TEAL
 
         # Outer row
         row = tk.Frame(self.chat_inner, bg=BG2)
@@ -455,28 +474,36 @@ class AstraUI:
         # Role label
         role_label = tk.Label(
             bubble_frame,
-            text="You" if is_user else "Astra",
+            text=role_text,
             font=small_font,
-            fg=GREEN if is_user else TEAL,
+            fg=role_color,
             bg=BG2,
             anchor="e" if is_user else "w"
         )
         role_label.pack(fill="x")
 
-        # Bubble
-        bubble = tk.Label(
-            bubble_frame,
+        # Bubble — with optional alert border
+        bubble_kwargs = dict(
             text=text,
             font=chat_font,
-            fg=GREEN if is_user else TEAL,
-            bg=USER_BG if is_user else ASTRA_BG,
+            fg=text_color,
+            bg=bubble_bg,
             wraplength=320,
             justify="left",
             anchor="w",
             padx=12, pady=8,
-            relief="flat",
-            bd=0,
         )
+        if is_alert:
+            bubble_kwargs.update(
+                relief="solid",
+                bd=1,
+                highlightbackground=border_color,
+                highlightthickness=1,
+            )
+        else:
+            bubble_kwargs.update(relief="flat", bd=0)
+
+        bubble = tk.Label(bubble_frame, **bubble_kwargs)
         bubble.pack(anchor="e" if is_user else "w")
 
         # Scroll to bottom
