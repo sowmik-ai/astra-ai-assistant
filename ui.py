@@ -253,8 +253,6 @@ class AstraUI:
         quick_cmds = [
             ("health check",    "do health check"),
             ("reminders",       "list reminders"),
-            ("skills",          "show skill library"),
-            ("learning",        "show learning stats"),
             ("help",            "show commands"),
         ]
         for label, cmd in quick_cmds:
