@@ -550,6 +550,11 @@ if __name__ == "__main__":
     # ── Start background scheduler ──
     start_scheduler()
 
+    # ── Start alert monitors (weather, storm, earthquake) ──
+    # Alerts will BOTH be spoken AND shown as chat bubbles on screen.
+    from alert_monitor import start_alert_monitor
+    start_alert_monitor(speak, ui=ui)
+
     # ── Final ready prompt ──
     if astra_healthy:
         speak("Say Astra to wake me.")
